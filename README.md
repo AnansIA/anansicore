@@ -23,6 +23,7 @@ anansicore/
 ├── test/                # Unit tests for validation engine
 ├── examples/            # Sample .txt and .json test cases
 ├── data/                # Your custom .txt / .json AnansiCore files
+├── docs/                # For full grammar specification and encoding rules
 └── README.md
 ```
 
