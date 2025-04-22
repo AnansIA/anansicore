@@ -13,6 +13,7 @@ with open(grammar_path, encoding="utf-8") as f:
 # Crear parser de un solo token (por línea)
 parser = Lark(grammar, start="token", parser="lalr")
 
+
 @v_args(inline=True)
 class TokenTransformer(Transformer):
     def token(self, etiqueta, *rest):
@@ -26,11 +27,8 @@ class TokenTransformer(Transformer):
         else:
             payload = str(raw_payload)
 
-        return {
-            "etiqueta": str(etiqueta),
-            "id": str(id_),
-            "payload": payload.strip()
-        }
+        return {"etiqueta": str(etiqueta), "id": str(id_), "payload": payload.strip()}
+
 
 def parse_tokens_by_line(text):
     transformer = TokenTransformer()
@@ -44,17 +42,20 @@ def parse_tokens_by_line(text):
         tokens.append(token)
     return tokens
 
+
 def modificar_payload(tokens, etiqueta, id_target, nuevo_payload):
     cambios = 0
     for token in tokens:
-        if token['etiqueta'] == etiqueta and token['id'] == id_target:
-            token['payload'] = nuevo_payload
+        if token["etiqueta"] == etiqueta and token["id"] == id_target:
+            token["payload"] = nuevo_payload
             cambios += 1
     return cambios
 
+
 def token_a_linea(token):
     base = f"{token['etiqueta']}.{token['id']}"
-    return f"{base}:{token['payload']}" if token['payload'] else f"{base}:"
+    return f"{base}:{token['payload']}" if token["payload"] else f"{base}:"
+
 
 # === CLI ===
 if __name__ == "__main__":
@@ -73,7 +74,7 @@ if __name__ == "__main__":
         id_completo = sys.argv[edit_index + 1]
         nuevo_payload = sys.argv[edit_index + 2]
 
-        if '.' not in id_completo:
+        if "." not in id_completo:
             print("El ID debe tener formato tipo r.1.2")
             sys.exit(1)
 
