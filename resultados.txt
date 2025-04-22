@@ -1,0 +1,60 @@
+
+🧪 Procesando: 1.py
+
+🔁 Conversión a AnansiCore:
+F.1:saludar
+| d.1.1:[[print('Hola')]]
+| E.1
+
+✅ Estructura válida.
+
+🔄 Reconstrucción desde Anansi AST:
+def saludar():
+    print('Hola')
+
+🎉 Reconstrucción exacta.
+
+🧪 Procesando: 2.py
+❌ Error al convertir a AnansiCore: parse_stmt.<locals>.line() got an unexpected keyword argument 'sid'. Did you mean '_sid'?
+
+🧪 Procesando: 3.py
+
+🔁 Conversión a AnansiCore:
+F.1:contar
+| l.1.1:[[for i in range(5)]]
+| i.1.1.2:[[i == 3]]
+| b.1.1.2.3:
+| E.1.1.2
+| d.1.1.4:[[print(i)]]
+| E.1.1
+| E.1
+
+✅ Estructura válida.
+
+🔄 Reconstrucción desde Anansi AST:
+def contar():
+    for i in range(5):
+        if i == 3:
+            break
+        print(i)
+
+🎉 Reconstrucción exacta.
+
+🧪 Procesando: 4.py
+❌ Error al convertir a AnansiCore: parse_stmt.<locals>.line() got an unexpected keyword argument 'sid'. Did you mean '_sid'?
+
+🧪 Procesando: 5.py
+
+🔁 Conversión a AnansiCore:
+F.1:usar_lambda
+| v.1.1:[[sumar = lambda x, y: x + y]]
+| d.1.2:[[print(sumar(3, 4))]]
+| E.1
+
+✅ Estructura válida.
+
+🔄 Reconstrucción desde Anansi AST:
+def usar_lambda():
+    print(sumar(3, 4))
+
+❗ Diferencias entre original y reconstruido.

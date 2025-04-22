@@ -28,66 +28,113 @@ def serialize_function(node, fid, is_method=False):
     for i, arg in enumerate(node.args.args):
         lines.append(f"| p.{fid}.{i+1}:{arg.arg}")
 
-    stmt_id = len(node.args.args) + 1
+    counter = [len(node.args.args) + 1]  # mutable counter
 
     for stmt in node.body:
-        lines += parse_stmt(stmt, fid, str(stmt_id))
-        stmt_id += 1
+        lines += parse_stmt(stmt, fid, counter)
+
+    if counter[0] == len(node.args.args) + 1:
+        lines.append(f"| -.{fid}.{counter[0]}:")
+        counter[0] += 1
 
     lines.append(f"| E.{fid}")
     return lines
 
 
-def parse_stmt(stmt, fid, sid):
+def parse_stmt(stmt, fid, counter, sid=None):
     lines = []
 
+    def next_id():
+        val = counter[0]
+        counter[0] += 1
+        return f"{val}"
+
+    def line(op, value=None, _sid=None):
+        _sid = _sid or next_id()
+        if value is None:
+            lines.append(f"| {op}.{fid}.{_sid}:")
+        else:
+            lines.append(f"| {op}.{fid}.{_sid}:[[{value}]]")
+        return _sid
+
     if isinstance(stmt, ast.Return):
-        expr = unparse(stmt.value) if stmt.value else ""
-        lines.append(f"| r.{fid}.{sid}:[[{expr}]]")
+        expr = unparse(stmt.value) if stmt.value else "Ø"
+        line("r", expr, sid)
 
     elif isinstance(stmt, ast.Expr):
-        expr = unparse(stmt.value)
-        lines.append(f"| d.{fid}.{sid}:[[{expr}]]")
+        line("d", unparse(stmt.value), sid)
+
+    elif isinstance(stmt, ast.Assign):
+        line("v", unparse(stmt), sid)
 
     elif isinstance(stmt, ast.Pass):
-        lines.append(f"| -.{fid}.{sid}:")
+        line("-", None, sid)
 
     elif isinstance(stmt, ast.Break):
-        lines.append(f"| b.{fid}.{sid}:")
+        line("b", None, sid)
 
     elif isinstance(stmt, ast.Continue):
-        lines.append(f"| n.{fid}.{sid}:")
+        line("n", None, sid)
+
+    elif isinstance(stmt, ast.Assert):
+        line("A", unparse(stmt.test), sid)
+
+    elif isinstance(stmt, ast.Raise):
+        value = unparse(stmt.exc) if stmt.exc else ""
+        line("T", value, sid)
+
+    elif isinstance(stmt, ast.With):
+        sid_local = line("w", unparse(stmt.items[0]), sid)
+        for sub in stmt.body:
+            lines += parse_stmt(sub, fid, counter, sid=f"{sid_local}.{next_id()}")
+        lines.append(f"| E.{fid}.{sid_local}")
+
+    elif isinstance(stmt, ast.Try):
+        sid_local = line("t", None, sid)
+        for sub in stmt.body:
+            lines += parse_stmt(sub, fid, counter, sid=f"{sid_local}.{next_id()}")
+
+        for handler in stmt.handlers:
+            name = handler.name or ""
+            if handler.type:
+                header = f"{unparse(handler.type)} as {name}" if name else unparse(handler.type)
+            else:
+                header = "Exception"
+            x_id = line("x", header, sid=f"{sid_local}.{next_id()}")
+            for sub in handler.body:
+                lines += parse_stmt(sub, fid, counter, sid=f"{x_id}.{next_id()}")
+
+        if stmt.finalbody:
+            z_id = line("z", None, sid=f"{sid_local}.{next_id()}")
+            for sub in stmt.finalbody:
+                lines += parse_stmt(sub, fid, counter, sid=f"{z_id}.{next_id()}")
+
+        lines.append(f"| E.{fid}.{sid_local}")
 
     elif isinstance(stmt, ast.If):
-        cond = unparse(stmt.test)
-        lines.append(f"| i.{fid}.{sid}:[[{cond}]]")
-        for j, sub in enumerate(stmt.body):
-            sub_id = f"{sid}.{j+1}"
-            lines += parse_stmt(sub, fid, sub_id)
+        sid_local = line("i", unparse(stmt.test), sid)
+        for sub in stmt.body:
+            lines += parse_stmt(sub, fid, counter, sid=f"{sid_local}.{next_id()}")
 
         if stmt.orelse:
-            lines.append(f"| e.{fid}.{sid}:")
-            for k, sub in enumerate(stmt.orelse):
-                sub_id = f"{sid}.2{k+1}"
-                lines += parse_stmt(sub, fid, sub_id)
+            e_id = line("e", None, sid=sid_local)
+            for sub in stmt.orelse:
+                lines += parse_stmt(sub, fid, counter, sid=f"{sid_local}.{next_id()}")
 
-        lines.append(f"| E.{fid}.{sid}")
+        lines.append(f"| E.{fid}.{sid_local}")
 
     elif isinstance(stmt, ast.For):
         header = f"for {unparse(stmt.target)} in {unparse(stmt.iter)}"
-        lines.append(f"| l.{fid}.{sid}:[[{header}]]")
-        for j, sub in enumerate(stmt.body):
-            sub_id = f"{sid}.{j+1}"
-            lines += parse_stmt(sub, fid, sub_id)
-        lines.append(f"| E.{fid}.{sid}")
+        sid_local = line("l", header, sid)
+        for sub in stmt.body:
+            lines += parse_stmt(sub, fid, counter, sid=f"{sid_local}.{next_id()}")
+        lines.append(f"| E.{fid}.{sid_local}")
 
     elif isinstance(stmt, ast.While):
-        cond = unparse(stmt.test)
-        lines.append(f"| l.{fid}.{sid}:[[while {cond}]]")
-        for j, sub in enumerate(stmt.body):
-            sub_id = f"{sid}.{j+1}"
-            lines += parse_stmt(sub, fid, sub_id)
-        lines.append(f"| E.{fid}.{sid}")
+        sid_local = line("l", f"while {unparse(stmt.test)}", sid)
+        for sub in stmt.body:
+            lines += parse_stmt(sub, fid, counter, sid=f"{sid_local}.{next_id()}")
+        lines.append(f"| E.{fid}.{sid_local}")
 
     return lines
 

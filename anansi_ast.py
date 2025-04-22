@@ -95,3 +95,53 @@ class AnLoop(ASTNode):
         lines += [stmt.to_python(indent + 4) for stmt in self.body]
         return "\n".join(lines)
 
+
+class AnAssert(ASTNode):
+    def __init__(self, expr):
+        self.expr = expr
+
+    def to_python(self, indent=0):
+        return " " * indent + f"assert {self.expr}"
+
+
+class AnRaise(ASTNode):
+    def __init__(self, expr):
+        self.expr = expr
+
+    def to_python(self, indent=0):
+        return " " * indent + f"raise {self.expr}"
+
+
+class AnWith(ASTNode):
+    def __init__(self, header, body):
+        self.header = header
+        self.body = body
+
+    def to_python(self, indent=0):
+        ind = " " * indent
+        lines = [f"{ind}with {self.header}:"]
+        lines += [stmt.to_python(indent + 4) for stmt in self.body]
+        return "\n".join(lines)
+
+
+class AnTry(ASTNode):
+    def __init__(self, body, except_blocks=None, finally_body=None):
+        self.body = body
+        self.excepts = except_blocks or []
+        self.finally_body = finally_body or []
+
+    def to_python(self, indent=0):
+        ind = " " * indent
+        lines = [f"{ind}try:"]
+        lines += [stmt.to_python(indent + 4) for stmt in self.body]
+
+        for header, body in self.excepts:
+            lines.append(f"{ind}catch {header}:" if 'catch' in header else f"{ind}except {header}:")
+            lines += [stmt.to_python(indent + 4) for stmt in body]
+
+        if self.finally_body:
+            lines.append(f"{ind}finally:")
+            lines += [stmt.to_python(indent + 4) for stmt in self.finally_body]
+
+        return "\n".join(lines)
+

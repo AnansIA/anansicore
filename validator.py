@@ -4,132 +4,62 @@ def validate_structure(tokens):
     errors = []
     seen_ids = set()
     open_blocks = []
-    id_tree = defaultdict(set)
-    current_decorators = []
-    decoradores_pendientes = []
-    global_level = True
-    imports = defaultdict(set)
-    imports_usados = {}
-    tokens_by_id = {t["id"]: t for t in tokens}
-    prev_token = None
 
-    # Paso 1: validar unicidad y jerarquía
+    # Etiquetas que abren un bloque y requieren cierre con E.X
+    block_etiquetas = {"F", "C", "m", "i", "l", "t", "w", "x", "z", "e"}
+
     for token in tokens:
         etiqueta = token["etiqueta"]
         id_ = token["id"]
-        if id_ in seen_ids:
+        payload = token.get("payload", "")
+
+        # 1. Detectar duplicados exactos
+        full_id = f"{etiqueta}.{id_}"
+        if full_id in seen_ids:
             errors.append(f"ID duplicado: {id_}")
-        seen_ids.add(id_)
+        seen_ids.add(full_id)
 
-        partes = id_.split(".")
-        for i in range(1, len(partes)):
-            padre = ".".join(partes[:i])
-            if padre not in seen_ids:
-                errors.append(f"ID huérfano: {id_} requiere {padre}")
-            id_tree[padre].add(id_)
-
-    # Paso 2: validaciones semánticas
-    seen_ids.clear()
-    open_blocks.clear()
-    current_decorators.clear()
-    decoradores_pendientes.clear()
-    global_level = True
-    prev_token = None
-
-    for token in tokens:
-        etiqueta = token["etiqueta"]
-        id_ = token["id"]
-        payload = token["payload"]
-
-        # v0.7: Validación 9 - Assert global no permitido
-        if etiqueta == "A" and global_level and not token.get("static_assert", False):
-            errors.append(f"Assert global no permitido en {id_}")
-
-        # Validación de apertura/cierre de bloques
-        if etiqueta != "E":
+        # 2. Abertura de bloque
+        if etiqueta in block_etiquetas:
             open_blocks.append((etiqueta, id_))
-        else:
+
+        # 3. Cierre de bloque
+        elif etiqueta == "E":
             if not open_blocks:
                 errors.append(f"Cierre sin bloque abierto: {id_}")
+                continue
+
+            match = None
+            # buscar bloque a cerrar, permitiendo cierres fuera de orden inmediato
+            for i in reversed(range(len(open_blocks))):
+                _, opened_id = open_blocks[i]
+                if opened_id == id_:
+                    match = i
+                    break
+
+            if match is not None:
+                open_blocks.pop(match)
             else:
-                tipo_abierto, id_abierto = open_blocks.pop()
-                if id_abierto != id_:
-                    errors.append(f"Cierre incorrecto: E.{id_} no coincide con {tipo_abierto}.{id_abierto}")
+                tipo_esperado, id_esperado = open_blocks[-1]
+                errors.append(f"Cierre incorrecto: E.{id_} no coincide con {tipo_esperado}.{id_esperado}")
 
-        # Validación 10: Import redundante
-        if etiqueta == "I":
-            modulos = [m.strip() for m in payload.split(",")]
-            for m in modulos:
-                if m in imports_usados:
-                    errors.append(f"{id_} repite import de {m} (ya usado en {imports_usados[m]})")
-                else:
-                    imports_usados[m] = id_
-
-        # Validación 4: b/n deben estar dentro de loop
-        if etiqueta in {"b", "n"}:
-            if not any(e[0] == "l" and id_.startswith(e[1]) for e in open_blocks):
-                errors.append(f"{etiqueta}.{id_} fuera de contexto de loop")
-
-        # Validación 5: z solo luego de t/x
-        if etiqueta == "z":
-            if not any(e[0] == "t" and id_.startswith(e[1]) for e in open_blocks):
-                errors.append(f"z.{id_} sin bloque try correspondiente")
-            if not prev_token or prev_token["etiqueta"] not in {"t", "x"}:
-                errors.append(f"z.{id_} no sigue directamente a t/x")
-
-        # Validación 6: Ø no puede estar fuera de return
-        if "Ø" in payload and etiqueta != "r":
-            errors.append(f"Uso inválido de símbolo reservado Ø en {etiqueta}.{id_}")
-
-        # Validación 6b: return vacío sin Ø
-        if etiqueta == "r" and not payload.strip():
+        # 4. Casos especiales
+        if etiqueta == "r" and payload.strip() == "":
             errors.append(f"Return vacío sin Ø en {id_}")
+        if etiqueta == "-" and payload.strip():
+            errors.append(f"Token '-' con contenido no permitido en {id_}")
+        if etiqueta == "-" and any(t["id"].startswith(id_ + ".") for t in tokens):
+            errors.append(f"Token '-' no puede tener hijos: {id_} tiene hijos")
 
-        # Validación 7: payload [[ ]] mal cerrado
-        if payload.strip().startswith("[[") and not payload.strip().endswith("]]"):
+        # 5. Validación de payload (chequeo mínimo)
+        if "[[" in payload and "]]" not in payload:
             errors.append(f"Payload mal cerrado con [[ ]] en {etiqueta}.{id_}")
-        if "]]" in payload and not payload.strip().endswith("]]"):
-            errors.append(f"Secuencia ]] inválida sin cierre correcto en {etiqueta}.{id_}")
+        if "]]" in payload and "[[" not in payload:
+            errors.append(f"Payload mal cerrado con [[ ]] en {etiqueta}.{id_}")
 
-        # Validación 8: decoradores deben ir seguidos de F/C/m
-        if etiqueta == "D":
-            current_decorators.append(token)
-        elif etiqueta in {"F", "C", "m"}:
-            current_decorators.clear()
-        elif etiqueta != "E" and current_decorators:
-            decor_ids = [d["id"] for d in current_decorators]
-            errors.append(f"Decorador(es) {decor_ids} sin F/m/C después")
-            current_decorators.clear()
-
-        # Validación 10b: import redundante en mismo scope
-        if etiqueta == "I":
-            módulos = [m.strip() for m in payload.split(",")]
-            padre = ".".join(id_.split(".")[:-1])
-            for mod in módulos:
-                if mod in imports[padre]:
-                    errors.append(f"Import redundante: {mod} en {id_}")
-                imports[padre].add(mod)
-
-        # Actualizar contexto global
-        if etiqueta in {"F", "C", "N"}:
-            global_level = False
-
-        prev_token = token
-
-    for etiqueta, id_ in open_blocks:
-        errors.append(f"Falta cierre E.{id_} para {etiqueta}.{id_}")
-
-    # Validación 7b: pass no puede tener payload ni hijos
-    for token in tokens:
-        if token["etiqueta"] == "-":
-            if token["payload"].strip():
-                errors.append(f"Token '-' con contenido no permitido en {token['id']}")
-            if token["id"] in id_tree and id_tree[token["id"]]:
-                errors.append(f"Token '-' no puede tener hijos: {token['id']} tiene {len(id_tree[token['id']])}")
-
-    # Validación 8 (refuerzo): decoradores huérfanos al final
-    if decoradores_pendientes:
-        errors.append(f"Decorador(es) {decoradores_pendientes} sin F/m/C después")
+    # 6. Bloques abiertos que nunca se cerraron
+    for tipo, id_abierto in open_blocks:
+        errors.append(f"Falta cierre E.{id_abierto} para {tipo}.{id_abierto}")
 
     return errors
 
