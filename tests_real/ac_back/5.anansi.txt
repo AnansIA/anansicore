@@ -1,0 +1,4 @@
+F.1:usar_lambda
+| v.1.1:[[sumar = lambda x, y: x + y]]
+| d.1.2:[[print(sumar(3, 4))]]
+| E.1

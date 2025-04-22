@@ -1,0 +1,3 @@
+F.1:saludar
+| d.1.1:[[print('Hola')]]
+| E.1

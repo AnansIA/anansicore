@@ -1,0 +1,14 @@
+F.1:operar_archivo
+| p.1.1:nombre
+| t.1.2:
+| w.1.2.1:[[open(nombre) as f]]
+| l.1.2.1.1:[[for linea in f]]
+| d.1.2.1.1.1:[[print(linea)]]
+| E.1.2.1.1
+| E.1.2.1
+| x.1.2:[[FileNotFoundError]]
+| d.1.2.1:[[print('Archivo no encontrado')]]
+| z.1.2:
+| d.1.2.1:[[print('Operación terminada')]]
+| E.1.2
+| E.1

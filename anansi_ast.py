@@ -1,9 +1,4 @@
-class ASTNode:
-    def to_python(self, indent=0):
-        raise NotImplementedError()
-
-
-class AnFunction(ASTNode):
+class AnFunction:
     def __init__(self, name, params, body, decorators=None):
         self.name = name
         self.params = params
@@ -11,100 +6,77 @@ class AnFunction(ASTNode):
         self.decorators = decorators or []
 
     def to_python(self, indent=0):
-        ind = " " * indent
-        decos = "\n".join(f"{ind}@{d}" for d in self.decorators)
-        header = f"{ind}def {self.name}({', '.join(self.params)}):"
-        body_lines = [stmt.to_python(indent + 4) for stmt in self.body]
-        return "\n".join(filter(None, [decos, header] + body_lines))
+        lines = []
+        for d in self.decorators:
+            lines.append("@" + d)
+        lines.append(" " * indent + f"def {self.name}({', '.join(self.params)}):")
+        if not self.body:
+            lines.append(" " * (indent + 4) + "pass")
+        else:
+            for stmt in self.body:
+                lines.append(stmt.to_python(indent + 4))
+        return "\n".join(lines)
 
 
 class AnMethod(AnFunction):
-    def to_python(self, indent=0):
-        return super().to_python(indent)
+    pass
 
 
-class AnClass(ASTNode):
+class AnClass:
     def __init__(self, name, methods):
         self.name = name
         self.methods = methods
 
     def to_python(self, indent=0):
-        ind = " " * indent
-        header = f"{ind}class {self.name}:"
+        lines = [f"{' ' * indent}class {self.name}:"]
         if not self.methods:
-            return f"{header}\n{ind}    pass"
-        body_lines = [m.to_python(indent + 4) for m in self.methods]
-        return "\n".join([header] + body_lines)
+            lines.append(" " * (indent + 4) + "pass")
+        else:
+            for m in self.methods:
+                lines.append(m.to_python(indent + 4))
+        return "\n".join(lines)
 
 
-class AnReturn(ASTNode):
-    def __init__(self, expr):
-        self.expr = expr
-
-    def to_python(self, indent=0):
-        return " " * indent + f"return {self.expr}"
-
-
-class AnStatement(ASTNode):
-    def __init__(self, expr):
-        self.expr = expr
+class AnReturn:
+    def __init__(self, value):
+        self.value = value
 
     def to_python(self, indent=0):
-        return " " * indent + self.expr
+        return " " * indent + f"return {self.value}"
 
 
-class AnPass(ASTNode):
+class AnStatement:
+    def __init__(self, value):
+        self.value = value
+
+    def to_python(self, indent=0):
+        return " " * indent + self.value
+
+
+class AnPass:
     def to_python(self, indent=0):
         return " " * indent + "pass"
 
 
-class AnBreak(ASTNode):
+class AnBreak:
     def to_python(self, indent=0):
         return " " * indent + "break"
 
 
-class AnContinue(ASTNode):
+class AnContinue:
     def to_python(self, indent=0):
         return " " * indent + "continue"
 
 
-class AnIf(ASTNode):
-    def __init__(self, cond, body, else_body=None):
+class AnAssert:
+    def __init__(self, cond):
         self.cond = cond
-        self.body = body
-        self.else_body = else_body or []
 
     def to_python(self, indent=0):
-        ind = " " * indent
-        lines = [f"{ind}if {self.cond}:"]
-        lines += [stmt.to_python(indent + 4) for stmt in self.body]
-        if self.else_body:
-            lines.append(f"{ind}else:")
-            lines += [stmt.to_python(indent + 4) for stmt in self.else_body]
-        return "\n".join(lines)
+        return " " * indent + f"assert {self.cond}"
 
 
-class AnLoop(ASTNode):
-    def __init__(self, header, body):
-        self.header = header
-        self.body = body
-
-    def to_python(self, indent=0):
-        ind = " " * indent
-        lines = [f"{ind}{self.header}:"]
-        lines += [stmt.to_python(indent + 4) for stmt in self.body]
-        return "\n".join(lines)
-
-
-class AnAssert(ASTNode):
-    def __init__(self, expr):
-        self.expr = expr
-
-    def to_python(self, indent=0):
-        return " " * indent + f"assert {self.expr}"
-
-
-class AnRaise(ASTNode):
+class AnRaise:
     def __init__(self, expr):
         self.expr = expr
 
@@ -112,36 +84,103 @@ class AnRaise(ASTNode):
         return " " * indent + f"raise {self.expr}"
 
 
-class AnWith(ASTNode):
+class AnAssign:
+    def __init__(self, expr):
+        self.expr = expr
+
+    def to_python(self, indent=0):
+        return " " * indent + self.expr
+
+
+class AnIf:
+    def __init__(self, cond, body, else_body=None):
+        self.cond = cond
+        self.body = body
+        self.else_body = else_body
+
+    def to_python(self, indent=0):
+        lines = [f"{' ' * indent}if {self.cond}:"]
+        if not self.body:
+            lines.append(" " * (indent + 4) + "pass")
+        else:
+            for stmt in self.body:
+                lines.append(stmt.to_python(indent + 4))
+        if self.else_body is not None:
+            lines.append(" " * indent + "else:")
+            if not self.else_body:
+                lines.append(" " * (indent + 4) + "pass")
+            else:
+                for stmt in self.else_body:
+                    lines.append(stmt.to_python(indent + 4))
+        return "\n".join(lines)
+
+
+class AnLoop:
     def __init__(self, header, body):
         self.header = header
         self.body = body
 
     def to_python(self, indent=0):
-        ind = " " * indent
-        lines = [f"{ind}with {self.header}:"]
-        lines += [stmt.to_python(indent + 4) for stmt in self.body]
+        lines = [f"{' ' * indent}{self.header}:"]
+        if not self.body:
+            lines.append(" " * (indent + 4) + "pass")
+        else:
+            for stmt in self.body:
+                lines.append(stmt.to_python(indent + 4))
         return "\n".join(lines)
 
 
-class AnTry(ASTNode):
+class AnWith:
+    def __init__(self, header, body):
+        self.header = header
+        self.body = body
+
+    def to_python(self, indent=0):
+        lines = [f"{' ' * indent}with {self.header}:"]
+        if not self.body:
+            lines.append(" " * (indent + 4) + "pass")
+        else:
+            for stmt in self.body:
+                lines.append(stmt.to_python(indent + 4))
+        return "\n".join(lines)
+
+
+class AnTry:
     def __init__(self, body, except_blocks=None, finally_body=None):
         self.body = body
-        self.excepts = except_blocks or []
+        self.except_blocks = except_blocks or []
         self.finally_body = finally_body or []
 
     def to_python(self, indent=0):
-        ind = " " * indent
-        lines = [f"{ind}try:"]
-        lines += [stmt.to_python(indent + 4) for stmt in self.body]
+        lines = [f"{' ' * indent}try:"]
+        if not self.body:
+            lines.append(" " * (indent + 4) + "pass")
+        else:
+            for stmt in self.body:
+                lines.append(stmt.to_python(indent + 4))
 
-        for header, body in self.excepts:
-            lines.append(f"{ind}catch {header}:" if 'catch' in header else f"{ind}except {header}:")
-            lines += [stmt.to_python(indent + 4) for stmt in body]
+        for exc_type, block in self.except_blocks:
+            lines.append(f"{' ' * indent}catch {exc_type or ''}:".replace("catch", "except"))
+            if not block:
+                lines.append(" " * (indent + 4) + "pass")
+            else:
+                for stmt in block:
+                    lines.append(stmt.to_python(indent + 4))
 
         if self.finally_body:
-            lines.append(f"{ind}finally:")
-            lines += [stmt.to_python(indent + 4) for stmt in self.finally_body]
+            lines.append(f"{' ' * indent}finally:")
+            if not self.finally_body:
+                lines.append(" " * (indent + 4) + "pass")
+            else:
+                for stmt in self.finally_body:
+                    lines.append(stmt.to_python(indent + 4))
 
         return "\n".join(lines)
+
+class AnLambda:
+    def __init__(self, expr):
+        self.expr = expr        # «f = lambda x: x + 1»   (raw text)
+
+    def to_python(self, indent=0):
+        return " " * indent + self.expr
 

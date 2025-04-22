@@ -6,42 +6,71 @@ F.1:saludar
 | d.1.1:[[print('Hola')]]
 | E.1
 
-✅ Estructura válida.
-
-🔄 Reconstrucción desde Anansi AST:
-def saludar():
-    print('Hola')
-
-🎉 Reconstrucción exacta.
+⚠ Errores de validación:
+ - ID duplicado: 1
 
 🧪 Procesando: 2.py
-❌ Error al convertir a AnansiCore: parse_stmt.<locals>.line() got an unexpected keyword argument 'sid'. Did you mean '_sid'?
+
+🔁 Conversión a AnansiCore:
+F.1:evaluar
+| p.1.1:x
+| i.1.2:[[x > 0]]
+| r.1.2.1:[[x]]
+| e.1.2:
+| r.1.2.21:[[-x]]
+| E.1.2
+| E.1
+
+⚠ Errores de validación:
+ - ID duplicado: 1
+ - Cierre sin bloque abierto: E.1.2
+ - ID duplicado: 1.2
+ - ID duplicado: 1.2
+ - Falta cierre E.1.2 para e.1.2
+ - Falta cierre E.1.2 para i.1.2
 
 🧪 Procesando: 3.py
 
 🔁 Conversión a AnansiCore:
 F.1:contar
 | l.1.1:[[for i in range(5)]]
-| i.1.1.2:[[i == 3]]
-| b.1.1.2.3:
-| E.1.1.2
-| d.1.1.4:[[print(i)]]
+| i.1.1.1:[[i == 3]]
+| b.1.1.1.1:
+| E.1.1.1
+| d.1.1.2:[[print(i)]]
 | E.1.1
 | E.1
 
-✅ Estructura válida.
-
-🔄 Reconstrucción desde Anansi AST:
-def contar():
-    for i in range(5):
-        if i == 3:
-            break
-        print(i)
-
-🎉 Reconstrucción exacta.
+⚠ Errores de validación:
+ - ID duplicado: 1
+ - Cierre sin bloque abierto: E.1.1
+ - Cierre sin bloque abierto: E.1.1.1
+ - ID duplicado: 1.1.1
+ - ID duplicado: 1.1
+ - Falta cierre E.1.1.1 para i.1.1.1
+ - Falta cierre E.1.1 para l.1.1
 
 🧪 Procesando: 4.py
-❌ Error al convertir a AnansiCore: parse_stmt.<locals>.line() got an unexpected keyword argument 'sid'. Did you mean '_sid'?
+
+🔁 Conversión a AnansiCore:
+F.1:dividir
+| p.1.1:a
+| p.1.2:b
+| t.1.3:
+| r.1.3.1:[[a / b]]
+| x.1.3:[[ZeroDivisionError]]
+| r.1.3.1:[[0]]
+| E.1.3
+| E.1
+
+⚠ Errores de validación:
+ - ID duplicado: 1
+ - Cierre sin bloque abierto: E.1.3
+ - ID duplicado: 1.3.1
+ - ID duplicado: 1.3
+ - ID duplicado: 1.3
+ - Falta cierre E.1.3 para t.1.3
+ - Falta cierre E.1.3 para x.1.3
 
 🧪 Procesando: 5.py
 
@@ -51,10 +80,119 @@ F.1:usar_lambda
 | d.1.2:[[print(sumar(3, 4))]]
 | E.1
 
-✅ Estructura válida.
+⚠ Errores de validación:
+ - ID duplicado: 1
 
-🔄 Reconstrucción desde Anansi AST:
-def usar_lambda():
-    print(sumar(3, 4))
+🧪 Procesando: 6.py
 
-❗ Diferencias entre original y reconstruido.
+🔁 Conversión a AnansiCore:
+C.1:Calculadora
+| m.1.1:__init__
+| p.1.1.1:self
+| d.1.1.2:[[self.memoria = 0]]
+| E.1.1
+| m.1.2:sumar
+| p.1.2.1:self
+| p.1.2.2:x
+| p.1.2.3:y
+| i.1.2.4:[[x == 0]]
+| r.1.2.4.1:[[y]]
+| e.1.2.4:
+| r.1.2.4.21:[[x + y]]
+| E.1.2.4
+| E.1.2
+| m.1.3:contar
+| p.1.3.1:self
+| p.1.3.2:n
+| l.1.3.3:[[for i in range(n)]]
+| d.1.3.3.1:[[print(i)]]
+| E.1.3.3
+| E.1.3
+| E.1
+
+⚠ Errores de validación:
+ - ID duplicado: 1
+ - Cierre sin bloque abierto: E.1.1
+ - Cierre sin bloque abierto: E.1.2
+ - Cierre sin bloque abierto: E.1.2.4
+ - Cierre sin bloque abierto: E.1.3
+ - Cierre sin bloque abierto: E.1.3.3
+ - ID duplicado: 1.2.4
+ - ID duplicado: 1.2.4
+ - ID duplicado: 1.3.3
+ - ID duplicado: 1.1
+ - ID duplicado: 1.2
+ - ID duplicado: 1.3
+ - Falta cierre E.1.2.4 para e.1.2.4
+ - Falta cierre E.1.2.4 para i.1.2.4
+ - Falta cierre E.1.3.3 para l.1.3.3
+ - Falta cierre E.1.1 para m.1.1
+ - Falta cierre E.1.2 para m.1.2
+ - Falta cierre E.1.3 para m.1.3
+
+🧪 Procesando: 7.py
+
+🔁 Conversión a AnansiCore:
+F.1:operar_archivo
+| p.1.1:nombre
+| t.1.2:
+| w.1.2.1:[[open(nombre) as f]]
+| l.1.2.1.1:[[for linea in f]]
+| d.1.2.1.1.1:[[print(linea)]]
+| E.1.2.1.1
+| E.1.2.1
+| x.1.2:[[FileNotFoundError]]
+| d.1.2.1:[[print('Archivo no encontrado')]]
+| z.1.2:
+| d.1.2.1:[[print('Operación terminada')]]
+| E.1.2
+| E.1
+
+⚠ Errores de validación:
+ - ID duplicado: 1
+ - Cierre sin bloque abierto: E.1.2
+ - Cierre sin bloque abierto: E.1.2.1
+ - Cierre sin bloque abierto: E.1.2.1.1
+ - ID duplicado: 1.2.1
+ - ID duplicado: 1.2.1
+ - ID duplicado: 1.2.1.1
+ - ID duplicado: 1.2
+ - ID duplicado: 1.2.1
+ - ID duplicado: 1.2
+ - ID duplicado: 1.2
+ - Falta cierre E.1.2.1.1 para l.1.2.1.1
+ - Falta cierre E.1.2 para t.1.2
+ - Falta cierre E.1.2.1 para w.1.2.1
+ - Falta cierre E.1.2 para x.1.2
+ - Falta cierre E.1.2 para z.1.2
+
+🧪 Procesando: 8.py
+
+🔁 Conversión a AnansiCore:
+C.1:Contador
+| m.1.1:contar_pares
+| p.1.1.1:self
+| p.1.1.2:lista
+| l.1.1.3:[[for n in lista]]
+| i.1.1.3.1:[[n % 2 == 0]]
+| d.1.1.3.1.1:[[print(f'{n} es par')]]
+| e.1.1.3.1:
+| n.1.1.3.1.21:
+| E.1.1.3.1
+| E.1.1.3
+| E.1.1
+| E.1
+
+⚠ Errores de validación:
+ - ID duplicado: 1
+ - Cierre sin bloque abierto: E.1.1
+ - Cierre sin bloque abierto: E.1.1.3
+ - Cierre sin bloque abierto: E.1.1.3.1
+ - ID duplicado: 1.1.3.1
+ - ID duplicado: 1.1.3.1
+ - ID duplicado: 1.1.3
+ - ID duplicado: 1.1
+ - Falta cierre E.1.1.3.1 para e.1.1.3.1
+ - Falta cierre E.1.1.3.1 para i.1.1.3.1
+ - Falta cierre E.1.1.3 para l.1.1.3
+ - Falta cierre E.1.1 para m.1.1
