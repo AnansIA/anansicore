@@ -1,6 +1,6 @@
 from anansi_ast import (
-    AnFunction, AnReturn, AnStatement, AnPass,
-    AnBreak, AnContinue, AnIf, AnLoop
+    AnFunction, AnMethod, AnClass, AnReturn, AnStatement,
+    AnPass, AnBreak, AnContinue, AnIf, AnLoop
 )
 
 def tokens_to_ast(tokens):
@@ -9,24 +9,33 @@ def tokens_to_ast(tokens):
     current_if = None
     current_else = None
     loop_stack = []
+    class_stack = []
 
     for token in tokens:
         e, i, p = token["etiqueta"], token["id"], token["payload"]
 
-        if e == "F":
-            if current_fn:
-                fn = AnFunction(
-                    name=current_fn["name"],
-                    params=current_fn["params"],
-                    body=current_fn["body"],
-                    decorators=current_fn["decorators"]
-                )
-                functions.append(fn)
+        if e == "C":
+            current_class = {"id": i, "name": p, "methods": []}
+            class_stack.append(current_class)
+
+        elif e == "m":
             current_fn = {
                 "name": p,
                 "params": [],
                 "body": [],
-                "decorators": []
+                "decorators": [],
+                "id": i,
+                "is_method": True
+            }
+
+        elif e == "F":
+            current_fn = {
+                "name": p,
+                "params": [],
+                "body": [],
+                "decorators": [],
+                "id": i,
+                "is_method": False
             }
 
         elif e == "p" and current_fn:
@@ -63,19 +72,14 @@ def tokens_to_ast(tokens):
 
         elif e == "E":
             if current_else is not None:
-                current_fn["body"].append(AnIf(
-                    cond=current_if["cond"],
-                    body=current_if["body"],
-                    else_body=current_else
-                ))
+                _add_stmt(current_fn, current_if=None, current_else=None, loop_stack=loop_stack,
+                          stmt=AnIf(current_if["cond"], current_if["body"], current_else))
                 current_if = None
                 current_else = None
 
             elif current_if:
-                current_fn["body"].append(AnIf(
-                    cond=current_if["cond"],
-                    body=current_if["body"]
-                ))
+                _add_stmt(current_fn, current_if=None, current_else=None, loop_stack=loop_stack,
+                          stmt=AnIf(current_if["cond"], current_if["body"]))
                 current_if = None
 
             elif loop_stack and i.startswith(loop_stack[-1]["id"]):
@@ -83,19 +87,32 @@ def tokens_to_ast(tokens):
                 stmt = AnLoop(loop["header"], loop["body"])
                 _add_stmt(current_fn, current_if, current_else, loop_stack, stmt)
 
-            elif current_fn and i == current_fn["name"]:
-                fn = AnFunction(
+            elif current_fn and i == current_fn["id"]:
+                node_class = AnMethod if current_fn.get("is_method") else AnFunction
+                fn = node_class(
                     name=current_fn["name"],
                     params=current_fn["params"],
                     body=current_fn["body"],
                     decorators=current_fn["decorators"]
                 )
-                functions.append(fn)
+                if class_stack:
+                    class_stack[-1]["methods"].append(fn)
+                else:
+                    functions.append(fn)
                 current_fn = None
 
-    # Si queda alguna función abierta sin cerrar
+            elif class_stack and i == class_stack[-1]["id"]:
+                class_obj = AnClass(
+                    name=class_stack[-1]["name"],
+                    methods=class_stack[-1]["methods"]
+                )
+                functions.append(class_obj)
+                class_stack.pop()
+
+    # Por si queda una función abierta
     if current_fn:
-        fn = AnFunction(
+        node_class = AnMethod if current_fn.get("is_method") else AnFunction
+        fn = node_class(
             name=current_fn["name"],
             params=current_fn["params"],
             body=current_fn["body"],

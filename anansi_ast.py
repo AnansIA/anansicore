@@ -18,6 +18,25 @@ class AnFunction(ASTNode):
         return "\n".join(filter(None, [decos, header] + body_lines))
 
 
+class AnMethod(AnFunction):
+    def to_python(self, indent=0):
+        return super().to_python(indent)
+
+
+class AnClass(ASTNode):
+    def __init__(self, name, methods):
+        self.name = name
+        self.methods = methods
+
+    def to_python(self, indent=0):
+        ind = " " * indent
+        header = f"{ind}class {self.name}:"
+        if not self.methods:
+            return f"{header}\n{ind}    pass"
+        body_lines = [m.to_python(indent + 4) for m in self.methods]
+        return "\n".join([header] + body_lines)
+
+
 class AnReturn(ASTNode):
     def __init__(self, expr):
         self.expr = expr

@@ -5,25 +5,37 @@ def python_to_anansi(source_code):
     tree = ast.parse(source_code)
     result = []
 
-    for fn_idx, node in enumerate(tree.body):
-        if not isinstance(node, ast.FunctionDef):
-            continue
+    for top_idx, node in enumerate(tree.body):
+        if isinstance(node, ast.FunctionDef):
+            result += serialize_function(node, fid=str(top_idx + 1))
 
-        fid = f"{fn_idx + 1}"
-        result.append(f"F.{fid}:{node.name}")
+        elif isinstance(node, ast.ClassDef):
+            cid = str(top_idx + 1)
+            result.append(f"C.{cid}:{node.name}")
+            for midx, method in enumerate(node.body):
+                if isinstance(method, ast.FunctionDef):
+                    result += serialize_function(method, fid=f"{cid}.{midx + 1}", is_method=True)
+            result.append(f"| E.{cid}")
 
-        for i, arg in enumerate(node.args.args):
-            result.append(f"| p.{fid}.{i+1}:{arg.arg}")
-
-        # Contador para líneas internas
-        stmt_id = len(node.args.args) + 1
-
-        for stmt in node.body:
-            result += parse_stmt(stmt, fid, str(stmt_id))
-            stmt_id += 1
-
-        result.append(f"| E.{fid}")
     return "\n".join(result)
+
+
+def serialize_function(node, fid, is_method=False):
+    lines = []
+    kind = "m" if is_method else "F"
+    lines.append(f"{'| ' if is_method else ''}{kind}.{fid}:{node.name}")
+
+    for i, arg in enumerate(node.args.args):
+        lines.append(f"| p.{fid}.{i+1}:{arg.arg}")
+
+    stmt_id = len(node.args.args) + 1
+
+    for stmt in node.body:
+        lines += parse_stmt(stmt, fid, str(stmt_id))
+        stmt_id += 1
+
+    lines.append(f"| E.{fid}")
+    return lines
 
 
 def parse_stmt(stmt, fid, sid):
@@ -56,7 +68,7 @@ def parse_stmt(stmt, fid, sid):
         if stmt.orelse:
             lines.append(f"| e.{fid}.{sid}:")
             for k, sub in enumerate(stmt.orelse):
-                sub_id = f"{sid}.e{k+1}"
+                sub_id = f"{sid}.2{k+1}"
                 lines += parse_stmt(sub, fid, sub_id)
 
         lines.append(f"| E.{fid}.{sid}")
